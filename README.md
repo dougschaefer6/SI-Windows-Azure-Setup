@@ -1,22 +1,17 @@
 # System Initiative Windows + Azure Setup Documentation Package
 
-**Version:** 2.0  
-**Created:** December 2025  
-**Organization:** American Sound  
+**Version:** 2.0
+**Created:** December 2025
+**Organization:** American Sound
 **Author:** Doug Schaefer (dougschaefer@asei.com)
 
 ---
 
 ## Package Overview
 
-This documentation package provides comprehensive setup instructions for System Initiative on Windows 11 with Azure as the cloud provider. It was created based on real-world implementation and troubleshooting at American Sound, documenting both official setup methods and community-discovered alternatives.
+This documentation package covers the complete setup of System Initiative on Windows 11 with Azure as the cloud provider, including the WSL2 and Docker plumbing that most SI documentation assumes you already have working, the Azure service principal configuration that differs from the AWS-focused official docs, and two methods for integrating Claude as an AI agent (the official CLI method and a community-discovered Desktop method). The package was built from real-world implementation at American Sound, so it documents the actual failure modes and configuration mistakes we encountered rather than just the happy path.
 
-**Key Features:**
-- Complete Windows 11 + WSL2 + Docker setup
-- Azure service principal configuration
-- Two Claude integration methods (CLI and Desktop)
-- Automated PowerShell scripts
-- Comprehensive troubleshooting guidance
+The package includes a full reference guide, a condensed checklist for tracking progress through the setup, and two PowerShell scripts that automate the Azure service principal creation and environment validation steps.
 
 ---
 
@@ -24,32 +19,24 @@ This documentation package provides comprehensive setup instructions for System 
 
 ### Documentation Files
 
+The main reference guide covers the complete setup end-to-end, while the checklist distills the same process into a trackable format for teams running through it across multiple machines.
+
 **[SI-Setup-Guide-Windows-Azure-v2.md](SI-Setup-Guide-Windows-Azure-v2.md)** (Main Reference)
-- Complete 50+ page setup guide
-- Detailed step-by-step instructions
-- Both Claude Code CLI and Claude Desktop methods
-- Troubleshooting section
+- Complete 50+ page setup guide with both Claude Code CLI and Claude Desktop methods
+- Troubleshooting section based on actual deployment issues
 - Reference information and best practices
 
 **[SI-Quick-Start-Checklist-v2.md](SI-Quick-Start-Checklist-v2.md)** (Quick Reference)
-- Condensed checklist format
-- Essential commands and steps
-- Track your progress with checkboxes
-- Quick troubleshooting reference
+- Condensed checklist format with checkboxes for progress tracking
+- Essential commands and quick troubleshooting reference
 
 ### PowerShell Scripts
 
-**[setup-azure-service-principal-v2.ps1](setup-azure-service-principal-v2.ps1)**
-- Automated Azure service principal creation
-- Configures proper RBAC permissions
-- Saves credentials securely
-- Validates configuration
+The scripts automate the two most error-prone manual steps in the setup process.
 
-**[validate-environment-v2.ps1](validate-environment-v2.ps1)**
-- Validates WSL2, Docker, Azure CLI, Node.js
-- Checks SI CLI installation
-- Verifies Claude integration (optional)
-- Provides actionable feedback
+**[setup-azure-service-principal-v2.ps1](setup-azure-service-principal-v2.ps1)** automates the Azure service principal creation, RBAC permission assignment, and credential export so you avoid the Client ID vs Object ID and Secret Value vs Secret ID confusion that causes most first-time authentication failures.
+
+**[validate-environment-v2.ps1](validate-environment-v2.ps1)** checks WSL2, Docker, Azure CLI, Node.js, SI CLI installation, and optional Claude integration, providing actionable feedback for any component that is missing or misconfigured.
 
 ---
 
@@ -71,161 +58,81 @@ This documentation package provides comprehensive setup instructions for System 
 
 ## Setup Process Overview
 
+The full setup runs through four phases, each building on the last.
+
 ### Phase 1: Base System (30-45 minutes)
-1. Enable WSL2 on Windows
-2. Install Ubuntu distribution
-3. Install Docker Desktop with WSL2 integration
-4. Install Azure CLI
-5. Install SI CLI in WSL2
+
+Install WSL2 with Ubuntu, Docker Desktop with WSL2 integration, Azure CLI, and the SI CLI inside WSL2. Most issues at this stage come from WSL2 not being properly enabled or Docker Desktop not having WSL2 integration turned on.
 
 ### Phase 2: Azure Configuration (15-20 minutes)
-1. Create Azure service principal
-2. Configure RBAC permissions
-3. Generate and save credentials
-4. Validate access
+
+Create an Azure service principal with the correct RBAC permissions, generate credentials, and validate access. The automated script handles this, but if you are doing it manually, the critical detail is that you need the Application (client) ID (not the Object ID) and the secret Value (not the Secret ID).
 
 ### Phase 3: Claude Integration (10-30 minutes)
-**Choose one method:**
-- **Claude Code CLI** (10-15 min, official, simple)
-- **Claude Desktop GUI** (20-30 min, unofficial, complex but visual)
+
+Choose one of two methods. Claude Code CLI is the official, supported method and takes 10-15 minutes. Claude Desktop is an unofficial community-discovered method that takes 20-30 minutes and may break with updates, but provides a visual chat interface.
 
 ### Phase 4: Connect and Test (10-15 minutes)
-1. Create SI account and workspace
-2. Configure Azure credentials in SI
-3. Create test infrastructure
-4. Validate end-to-end workflow
+
+Create an SI account and workspace, configure Azure credentials, create test infrastructure, and validate the end-to-end workflow.
 
 **Total Time:** 1-2 hours for complete setup
 
 ---
 
-## Key Documentation Highlights
+## Critical Concepts
 
-### What Makes This Guide Unique
+### Token Confusion
 
-**Windows-Specific Focus:**
-- Most SI documentation assumes Linux or macOS
-- This guide addresses Windows-specific challenges
-- WSL2 integration patterns documented
-- Docker Desktop configuration explained
-
-**Azure Integration:**
-- Official SI docs focus on AWS
-- Complete Azure service principal setup
-- RBAC vs Entra ID role clarification
-- Azure-specific terminology mappings
-
-**Two Claude Methods:**
-- **Claude Code CLI:** Official supported method
-- **Claude Desktop GUI:** Community-discovered method (unofficial)
-- Clear comparison of pros/cons
-- Working configurations for both
-
-**Real-World Troubleshooting:**
-- Based on actual implementation experience
-- Common error messages and solutions
-- False positives in validation tools
-- WSL2-specific issues and fixes
-
----
-
-## Critical Concepts Explained
-
-### Token Confusion (IMPORTANT)
-
-System Initiative uses confusing token terminology:
-- **API Tokens:** JWT format (long), used for programmatic access and AI agents
-- **Workspace Tokens:** ULID format (short), used for web interface
-- **For AI integration:** Use API token (JWT format)
-- **Environment variable name:** `SI_API_TOKEN` (even though it's an API token)
+System Initiative uses confusing token terminology that trips up most new users. API Tokens are JWT format (long strings) used for programmatic access and AI agents. Workspace Tokens are ULID format (short strings) used for the web interface. For AI integration, you need the API token, stored in the `SI_API_TOKEN` environment variable.
 
 ### Service Principal Permissions
 
-**What You Need:**
-- App Registration in Azure Entra ID (creates identity)
-- Client Secret (password for authentication)
-- Azure RBAC role on subscriptions/resources (Contributor or custom)
+The service principal needs Azure RBAC roles (Contributor or custom) on the subscriptions or resources it manages. It does not need Entra ID administrative roles, Microsoft Graph API permissions, or Global Administrator access. The App Registration in Entra ID creates the identity, the Client Secret provides the password, and the RBAC role assignment on the subscription provides the actual authorization.
 
-**What You DON'T Need:**
-- NO Entra ID administrative roles
-- NO Microsoft Graph API permissions
-- NO Global Administrator or similar roles
+### Azure Credential Values
 
-The service principal only needs resource management permissions via Azure RBAC.
+The most common authentication failure comes from using the wrong values when configuring SI's Microsoft Credential.
 
-### Azure Credential Values (CRITICAL)
+| SI Field | Azure Portal Location | Common Mistake |
+|----------|----------------------|----------------|
+| **Client ID** | Application (client) ID | Do not use Object ID |
+| **Client Secret** | Secret VALUE | Do not use Secret ID |
+| **Tenant ID** | Directory (tenant) ID | Straightforward |
 
-**Common mistake that causes authentication failures:**
-
-When configuring System Initiative's Microsoft Credential:
-
-| SI Field | Azure Portal Location | ⚠️ Common Mistake |
-|----------|----------------------|-------------------|
-| **Client ID** | Application (client) ID | ❌ Don't use Object ID |
-| **Client Secret** | Secret VALUE | ❌ Don't use Secret ID |
-| **Tenant ID** | Directory (tenant) ID | ✅ Straightforward |
-
-**Client Secret Details:**
-- When you create a secret in Azure, you see a table with columns
-- **Secret ID** = A GUID like `12345678-abcd-...` ❌ Wrong
-- **Value** = Long string like `A8Q~abc123...` ✅ Correct
-- Copy the VALUE column (30+ character string)
-- It's only shown once when created
-
-**Client ID Details:**
-- App registration Overview shows three GUIDs
-- **Application (client) ID** ✅ Use this
-- **Object ID** ❌ Not this
-- Both are GUIDs, easy to confuse
+The Client Secret is only shown once when created. Copy the Value column (the 30+ character string), not the Secret ID (which is a GUID).
 
 ### WSL2 vs Windows
 
-**Two Separate Environments:**
-- WSL2: Linux environment for Docker, SI tools, Claude CLI
-- Windows: Primary control plane for Azure management, validation
-
-**Install tools in the environment where you'll use them:**
-- Azure CLI: Install on Windows (use PowerShell)
-- Docker: Managed by Docker Desktop (Windows), runs in WSL2
-- Node.js: Install separately in WSL2
-- SI CLI: Install in WSL2
-- Claude Code: Install in WSL2
-- Claude Desktop: Install on Windows
+WSL2 and Windows are two separate environments that share a filesystem but not a tool installation. Install Azure CLI on Windows (PowerShell), Docker is managed by Docker Desktop (runs in WSL2), and Node.js, SI CLI, and Claude Code all install inside WSL2.
 
 ### Claude Code vs Claude Desktop
 
 | Aspect | Claude Code CLI | Claude Desktop GUI |
 |--------|----------------|-------------------|
-| **Official Support** | ✅ Yes | ❌ No |
+| **Official Support** | Yes | No |
 | **Setup Complexity** | Simple | Complex |
 | **Interface** | Terminal | Chat GUI |
-| **Documentation** | SI official docs | This guide only |
 | **Best For** | Automation, scripting | Exploration, learning |
 | **Updates** | Less likely to break | May break with updates |
 
-**Recommendation:** Start with Claude Code CLI if comfortable with terminals. Use Claude Desktop if you need the visual interface and accept the maintenance burden.
+Start with Claude Code CLI if you are comfortable with terminals. Use Claude Desktop if you need the visual interface and accept the maintenance burden of an unofficial integration method.
 
 ---
 
-## Prerequisites Summary
+## Prerequisites
 
 ### Required Software
-- Windows 11 Pro or Enterprise
-- WSL2 with Ubuntu distribution
-- Docker Desktop for Windows (WSL2 mode)
-- Azure CLI for Windows
-- Node.js in WSL2
-- System Initiative CLI in WSL2
+
+You need Windows 11 Pro or Enterprise with WSL2 and Ubuntu, Docker Desktop for Windows in WSL2 mode, Azure CLI for Windows, Node.js in WSL2, and the System Initiative CLI in WSL2.
 
 ### Required Accounts
-- Azure subscription (Owner or Contributor access)
-- System Initiative account (free tier available)
-- Anthropic Claude account (for AI integration)
+
+An Azure subscription with Owner or Contributor access, a System Initiative account (free tier available), and an Anthropic Claude account for AI integration.
 
 ### Hardware Requirements
-- 16GB RAM minimum (32GB recommended)
-- 50GB free disk space
-- CPU with virtualization support
+
+16GB RAM minimum (32GB recommended), 50GB free disk space, and a CPU with virtualization support enabled in BIOS.
 
 ---
 
@@ -233,169 +140,12 @@ When configuring System Initiative's Microsoft Credential:
 
 ### Before You Begin
 
-Run validation script to check prerequisites:
+Run the validation script to check prerequisites before starting the setup process.
 
 ```powershell
-# In PowerShell
 .\validate-environment-v2.ps1
 ```
 
-Review output for any critical failures or warnings.
-
 ### After Setup
 
-Verify end-to-end functionality:
-1. WSL2 and Docker working
-2. Azure CLI authenticated
-3. SI CLI functional
-4. Claude can query SI workspace
-5. Can create Azure resources from SI
-6. Resources appear in Azure Portal
-
----
-
-## Troubleshooting Quick Reference
-
-### Most Common Issues
-
-**"WSL2 not starting"**
-```powershell
-wsl --shutdown
-wsl
-```
-
-**"Docker not accessible from WSL2"**
-- Docker Desktop → Settings → Resources → WSL Integration
-- Enable Ubuntu integration
-- Apply & Restart
-
-**"SI CLI not found"**
-```bash
-export PATH="$HOME/.local/bin:$PATH"
-echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc
-```
-
-**"Claude Desktop - Server disconnected"**
-- Verify config file: `%APPDATA%\Claude\claude_desktop_config.json`
-- Ensure token is JWT format (not workspace token)
-- Check Docker Desktop is running
-- Restart Claude Desktop completely
-
-**"Azure authentication failed"**
-```powershell
-az ad sp list --display-name "SystemInitiative-Integration"
-az role assignment list --assignee YOUR_CLIENT_ID
-```
-
-For detailed troubleshooting, see the main guide.
-
----
-
-## Security Considerations
-
-### Credential Management
-- Store client secrets in password manager or Azure Key Vault
-- Never commit secrets to source control
-- Rotate service principal secrets every 6-12 months
-- Use minimum required permissions (start with resource group scope)
-
-### Azure RBAC Best Practices
-- Grant Contributor role at most granular scope needed
-- Use custom roles for production environments
-- Regular audit of role assignments
-- Remove unused service principals
-
-### System Initiative
-- API tokens have expiration dates
-- Separate tokens for dev/prod environments
-- Configure approval workflows for production changes
-- Enable audit logging
-
----
-
-## Support and Resources
-
-### System Initiative
-- Official Docs: https://docs.systeminit.com
-- Community Discord: https://discord.gg/system-initiative
-- GitHub: https://github.com/systeminit/si
-
-### Microsoft Azure
-- Azure Portal: https://portal.azure.com
-- Documentation: https://docs.microsoft.com/azure
-- CLI Reference: https://docs.microsoft.com/cli/azure
-
-### Docker
-- Docker Desktop: https://www.docker.com/products/docker-desktop
-- Documentation: https://docs.docker.com
-
-### Claude
-- Website: https://claude.ai
-- Documentation: https://docs.anthropic.com
-
-### American Sound
-- Contact: Doug Schaefer
-- Email: dougschaefer@asei.com
-- Organization: American Sound
-
----
-
-## Version History
-
-### Version 2.0 (December 2025)
-- Complete rewrite based on feedback and real-world testing
-- Added both Claude Code CLI and Claude Desktop methods
-- Improved validation scripts with better output handling
-- Clarified Azure RBAC vs Entra ID permissions
-- Fixed token type confusion (API vs workspace tokens)
-- Streamlined setup process
-- Removed user-specific directory structures
-- Updated all scripts and documentation
-
-### Version 1.0 (December 2025)
-- Initial documentation package
-- Windows 11 + WSL2 + Docker setup
-- Azure service principal configuration
-- Basic validation scripts
-
----
-
-## Contributing and Feedback
-
-This documentation was created for American Sound's internal use but may be helpful to others setting up System Initiative on Windows with Azure.
-
-**Found an issue?**
-- Contact: dougschaefer@asei.com
-- Include: Error messages, system details, and steps to reproduce
-
-**Suggestions for improvement?**
-- We welcome feedback on clarity and completeness
-- Let us know what worked and what didn't
-- Share your own troubleshooting discoveries
-
----
-
-## License and Usage
-
-This documentation is provided "as-is" for informational purposes. While created for American Sound, others are welcome to use and adapt it for their own System Initiative setup needs.
-
-**Disclaimer:** The Claude Desktop integration method is not officially supported by System Initiative and may change or break with future updates. The official method is Claude Code CLI.
-
----
-
-## Getting Started Now
-
-1. **Read the main guide:** [SI-Setup-Guide-Windows-Azure-v2.md](SI-Setup-Guide-Windows-Azure-v2.md)
-2. **Follow the checklist:** [SI-Quick-Start-Checklist-v2.md](SI-Quick-Start-Checklist-v2.md)
-3. **Run validation:** `.\validate-environment-v2.ps1`
-4. **Create service principal:** `.\setup-azure-service-principal-v2.ps1`
-5. **Configure and test**
-
-**Good luck with your System Initiative setup!**
-
----
-
-**Document Version:** 2.0  
-**Last Updated:** December 2025  
-**Author:** Doug Schaefer (dougschaefer@asei.com)  
-**Organization:** American Sound
+Verify end-to-end functionality by confirming WSL2 and Docker are working, Azure CLI is authenticated, SI CLI is functional, Claude can query the SI workspace, and you can create Azure resources from SI that appear in the Azure Portal.
